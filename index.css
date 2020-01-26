@@ -3,3 +3,7 @@ canvas {
   height:900px;
   border: solid black 1px;
 }
+
+#buttonStart {
+  margin-left: 50px;
+}
