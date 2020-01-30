@@ -1,9 +1,19 @@
 canvas {
-  width:1000px;
-  height:900px;
+  width:500px;
+  height:500px;
   border: solid black 1px;
 }
 
 #buttonStart {
   margin-left: 50px;
+}
+
+#tester, #singleValue {
+   width:400px;
+   height:400px;
+}
+
+#plots {
+  display: flex;
+
 }

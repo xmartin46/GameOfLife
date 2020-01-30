@@ -6,13 +6,13 @@ var buttonRandom = document.getElementById('buttonRandom');
 var gridOn = document.getElementById('gridOn');
 var fpsRange = document.getElementById('fps');
 
-let width = 1000;
-let height = 900;
+let width = 500;
+let height = 500;
 
 canvas.height = height;
 canvas.width = width;
 
-let nRows = 300;
+let nRows = 100;
 let nCols = nRows;
 
 var fps = 10;
@@ -31,14 +31,23 @@ buttonStop.addEventListener('click', () => {
 })
 
 buttonRandom.addEventListener('click', () => {
+  countArray = initializeCountArray();
+
   for (var i = 0; i < array.length; i++) {
     for (var j = 0; j < array[i].length; j++) {
-      array[i][j] = Math.random() > 0.85;
+      array[i][j] = Math.random() > 0.5;
+      if (array[i][j]) countArray[i][j] = Infinity;
+      else countArray[i][j] = 0;
     }
   }
 
+  singleValueY = [];
+  singleValueX = [0];
+
   drawGrid();
   drawArray(array);
+  paintCounter(countArray);
+  createHistogram(countArray);
 })
 
 gridOn.addEventListener('click', () => {
@@ -91,6 +100,12 @@ function getPosition(event) {
 
   array[Math.floor((y/height) * nRows)][Math.floor((x/width) * nCols)] = !array[Math.floor((y/height) * nRows)][Math.floor((x/width) * nCols)];
 
+  if (countArray[Math.floor((y/height) * nRows)][Math.floor((x/width) * nCols)] == 0) {
+    countArray[Math.floor((y/height) * nRows)][Math.floor((x/width) * nCols)] = Infinity;
+  } else {
+    countArray[Math.floor((y/height) * nRows)][Math.floor((x/width) * nCols)] = 0;
+  }
+
   if (array[Math.floor((y/height) * nRows)][Math.floor((x/width) * nCols)]) {
     context.fillStyle = "#000000";
     context.fillRect(Math.floor((x/width) * nCols) * width/nCols, Math.floor((y/height) * nRows) * height/nRows, width/nCols, height/nRows);
@@ -98,6 +113,8 @@ function getPosition(event) {
     context.fillStyle = "#FFFFFF";
     context.fillRect(Math.floor((x/width) * nCols) * width/nCols + 0.5, Math.floor((y/height) * nRows) * height/nRows + 0.5, width/nCols - 1.5, height/nRows - 1.5);
   }
+
+  paintCounter(countArray);
 }
 
 function increaseArray(array) {
@@ -169,10 +186,16 @@ function nextTick(array) {
                        array[i + 1][j + 1];
 
       if (!array[i][j]) { // Dead cell
-        if (aliveCells == 3) cArray[i - 1][j - 1] = true;
+        if (aliveCells == 3) {
+          cArray[i - 1][j - 1] = true;
+          if (countArray[i - 1][j - 1] < colours.length) countArray[i - 1][j - 1]++;
+        }
       } else { // Alive cell
         if (aliveCells < 2) cArray[i - 1][j - 1] = false;
-        else if (aliveCells == 2 || aliveCells == 3) cArray[i - 1][j - 1] = true;
+        else if (aliveCells == 2 || aliveCells == 3) {
+          cArray[i - 1][j - 1] = true;
+          if (countArray[i - 1][j - 1] < colours.length) countArray[i - 1][j - 1]++;
+        }
         else if (aliveCells > 3) cArray[i - 1][j - 1] = false;
       }
     }
@@ -188,6 +211,9 @@ function gameLoop(timeStamp) {
     array = nextTick(array);
     drawArray(array);
     drawGrid();
+
+    paintCounter(countArray);
+    createHistogram(countArray);
 
     start();
   }, 1000/fps);
@@ -222,5 +248,89 @@ function stop() {
   }
 }
 
+
+
 drawGrid();
 var array = create2DArray(nRows, nCols);
+
+/* ************************* STATISTICS ************************* */
+var countArray = initializeCountArray();
+var histogramCounter = document.getElementById('tester');
+var canvasCount = document.getElementById('canvasCount');
+var contextCount = canvasCount.getContext('2d');
+
+var singleValue = document.getElementById('singleValue');
+var singleValueY = [];
+var singleValueX = [0];
+
+canvasCount.height = height;
+canvasCount.width = width;
+
+let colours = ["#ffffff", "#ffe6e6", "#ffcccc", "#ffb3b3", "#ff9999", "#ff8080", "#ff6666", "#ff4d4d", "#ff3333", "#ff1a1a", "#ff0000", "#e60000", "#cc0000", "#b30000", "#990000", "#800000", "#660000", "#4d0000", "#330000", "#1a0000"];
+
+function paintCounter(countArray) {
+  for (var i = 0; i < nRows; i++) {
+    for (var j = 0; j < nCols; j++) {
+      if (countArray[i][j] == Infinity) {
+        contextCount.fillStyle = "#000000";
+      } else {
+        var index = Math.floor((countArray[i][j]/(colours.length + 8)) * colours.length);
+        contextCount.fillStyle = colours[index];
+      }
+
+      contextCount.fillRect(j * width/nCols, i * height/nRows, width/nCols, height/nRows);
+    }
+  }
+}
+
+function initializeCountArray() {
+  var countArray = [];
+
+  for (var i = 0; i < nRows; i++) {
+    countArray[i] = [];
+    for (var j = 0; j < nCols; j++) {
+      countArray[i][j] = 0;
+    }
+  }
+
+  return countArray;
+}
+
+function createHistogram(countArray) {
+  var histogram = new Array(21).fill(0);
+  var x = [];
+
+  for (var i = 0; i < countArray.length; i++) {
+    for (var j = 0; j <= 20; j++) {
+      histogram[j] += countArray[i].filter((v) => (v === j)).length;
+      x[j] = j;
+    }
+  }
+
+  var trace = {
+      x: x,
+      y: histogram,
+      type: 'bar',
+    };
+  var data = [trace];
+  Plotly.newPlot(histogramCounter, data);
+
+
+
+  singleValueX[singleValueX.length] = singleValueX[singleValueX.length - 1] + 1;
+  singleValueY[singleValueY.length] = histogram[0];
+
+  linePlotSingleValue();
+}
+
+function linePlotSingleValue() {
+  var trace = {
+    x: singleValueX,
+    y: singleValueY,
+    type: 'scatter'
+  };
+
+  var data = [trace];
+
+  Plotly.newPlot(singleValue, data);
+}
